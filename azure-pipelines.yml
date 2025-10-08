@@ -2,7 +2,7 @@ trigger:
 - main
 
 pool:
-  name: 'binet-window-agent'  # 使用你自己的 Windows 代理
+  name: 'binet-window-agent'
 
 steps:
 - task: ArchiveFiles@2
@@ -17,6 +17,9 @@ steps:
   inputs:
     targetType: 'inline'
     script: |
+      # 临时信任目标VM（仅限当前会话）
+      Set-Item WSMan:\localhost\Client\TrustedHosts -Value "20.243.10.36" -Force
+      
       # 创建凭据对象
       $securePassword = ConvertTo-SecureString "$(vmPassword)" -AsPlainText -Force
       $credential = New-Object System.Management.Automation.PSCredential("BiNetServer\wchoo", $securePassword)
