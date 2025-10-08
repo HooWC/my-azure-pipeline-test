@@ -2,7 +2,7 @@ trigger:
 - main
 
 pool:
-  vmImage: 'windows-latest'
+  name: 'binet-window-agent'  # 使用你自己的 Windows 代理
 
 steps:
 - task: ArchiveFiles@2
@@ -35,6 +35,8 @@ steps:
           
           # 清理临时ZIP文件
           Remove-Item -Path "C:\website.zip" -Force
+          
+          Write-Host "网站文件已成功更新！"
       }
       
       # 关闭会话
