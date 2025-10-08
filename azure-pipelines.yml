@@ -1,0 +1,33 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+- task: ArchiveFiles@2
+  displayName: '打包网站文件'
+  inputs:
+    rootFolderOrFile: '$(Build.SourcesDirectory)'
+    includeRootFolder: false
+    archiveFile: '$(Build.ArtifactStagingDirectory)/website.zip'
+
+- task: WindowsMachineFileCopy@4
+  displayName: '复制文件到 VM'
+  inputs:
+    sourcePath: '$(Build.ArtifactStagingDirectory)/website.zip'
+    targetPath: 'C:\inetpub\wwwroot'
+    machineNames: '20.243.10.36'
+    adminUserName: 'BiNetServer\wchoo'
+    adminPassword: '$(vmPassword)'
+    cleanTargetBeforeCopy: true
+
+- task: AzurePowerShell@5
+  displayName: '在 VM 上解压文件'
+  inputs:
+    ScriptType: 'InlineScript'
+    Inline: |
+      Add-Type -AssemblyName System.IO.Compression.FileSystem
+      [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\inetpub\wwwroot\website.zip", "C:\inetpub\wwwroot", $true)
+      Write-Host "网站更新成功！"
+    pwsh: true
