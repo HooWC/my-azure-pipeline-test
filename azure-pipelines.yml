@@ -5,44 +5,11 @@ pool:
   name: 'binet-window-agent'
 
 steps:
-- task: ArchiveFiles@2
-  displayName: '打包网站文件'
-  inputs:
-    rootFolderOrFile: '$(Build.SourcesDirectory)'
-    includeRootFolder: false
-    archiveFile: '$(Build.ArtifactStagingDirectory)/website.zip'
-
 - task: PowerShell@2
-  displayName: '部署到VM的IIS'
+  displayName: '测试VM连接'
   inputs:
     targetType: 'inline'
     script: |
-      # 临时信任目标VM（仅限当前会话）
-      Set-Item WSMan:\localhost\Client\TrustedHosts -Value "20.243.10.36" -Force
-      
-      # 创建凭据对象
-      $securePassword = ConvertTo-SecureString "$(vmPassword)" -AsPlainText -Force
-      $credential = New-Object System.Management.Automation.PSCredential("BiNetServer\wchoo", $securePassword)
-      
-      # 建立到VM的会话
-      $session = New-PSSession -ComputerName "20.243.10.36" -Credential $credential
-      
-      # 复制ZIP文件到VM
-      Copy-Item -Path "$(Build.ArtifactStagingDirectory)/website.zip" -Destination "C:\website.zip" -ToSession $session
-      
-      # 在VM上执行解压命令
-      Invoke-Command -Session $session -ScriptBlock {
-          # 解压文件到wwwroot
-          Add-Type -AssemblyName System.IO.Compression.FileSystem
-          [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\website.zip", "C:\inetpub\wwwroot", $true)
-          
-          # 清理临时ZIP文件
-          Remove-Item -Path "C:\website.zip" -Force
-          
-          Write-Host "网站文件已成功更新！"
-      }
-      
-      # 关闭会话
-      Remove-PSSession $session
-      
-      Write-Host "✅ 网站已成功部署到 IIS！"
+      # 测试基本网络连接
+      Test-NetConnection -ComputerName 20.243.10.36 -Port 445
+      Write-Host "如果上面显示TcpTestSucceeded: True，说明网络连通"
