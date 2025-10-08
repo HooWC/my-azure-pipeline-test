@@ -12,22 +12,32 @@ steps:
     includeRootFolder: false
     archiveFile: '$(Build.ArtifactStagingDirectory)/website.zip'
 
-- task: WindowsMachineFileCopy@4
-  displayName: '复制文件到 VM'
+- task: PowerShell@2
+  displayName: '部署到VM的IIS'
   inputs:
-    sourcePath: '$(Build.ArtifactStagingDirectory)/website.zip'
-    targetPath: 'C:\inetpub\wwwroot'
-    machineNames: '20.243.10.36'
-    adminUserName: 'BiNetServer\wchoo'
-    adminPassword: '$(vmPassword)'
-    cleanTargetBeforeCopy: true
-
-- task: AzurePowerShell@5
-  displayName: '在 VM 上解压文件'
-  inputs:
-    ScriptType: 'InlineScript'
-    Inline: |
-      Add-Type -AssemblyName System.IO.Compression.FileSystem
-      [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\inetpub\wwwroot\website.zip", "C:\inetpub\wwwroot", $true)
-      Write-Host "网站更新成功！"
-    pwsh: true
+    targetType: 'inline'
+    script: |
+      # 创建凭据对象
+      $securePassword = ConvertTo-SecureString "$(vmPassword)" -AsPlainText -Force
+      $credential = New-Object System.Management.Automation.PSCredential("BiNetServer\wchoo", $securePassword)
+      
+      # 建立到VM的会话
+      $session = New-PSSession -ComputerName "20.243.10.36" -Credential $credential
+      
+      # 复制ZIP文件到VM
+      Copy-Item -Path "$(Build.ArtifactStagingDirectory)/website.zip" -Destination "C:\website.zip" -ToSession $session
+      
+      # 在VM上执行解压命令
+      Invoke-Command -Session $session -ScriptBlock {
+          # 解压文件到wwwroot
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          [System.IO.Compression.ZipFile]::ExtractToDirectory("C:\website.zip", "C:\inetpub\wwwroot", $true)
+          
+          # 清理临时ZIP文件
+          Remove-Item -Path "C:\website.zip" -Force
+      }
+      
+      # 关闭会话
+      Remove-PSSession $session
+      
+      Write-Host "✅ 网站已成功部署到 IIS！"
